@@ -798,6 +798,7 @@ skip_cqterri:
 			mrq->cmdq_req->resp_err = true;
 			pr_err("%s: Response error (0x%08x) from card !!!",
 					mmc_hostname(mmc), status);
+			BUG();
 		} else {
 			mrq->cmdq_req->resp_idx = cmdq_readl(cq_host, CQCRI);
 			mrq->cmdq_req->resp_arg = cmdq_readl(cq_host, CQCRA);
@@ -903,7 +904,6 @@ static int cmdq_halt(struct mmc_host *mmc, bool halt)
 	struct cmdq_host *cq_host = (struct cmdq_host *)mmc_cmdq_private(mmc);
 	u32 val;
 	int retries = 3;
-	unsigned long flags;
 
 	if (halt) {
 		while (retries) {
@@ -924,17 +924,12 @@ static int cmdq_halt(struct mmc_host *mmc, bool halt)
 		}
 		return retries ? 0 : -ETIMEDOUT;
 	} else {
-
-		local_irq_save(flags);
 		if (cq_host->ops->set_data_timeout)
 			cq_host->ops->set_data_timeout(mmc, 0xf);
 		if (cq_host->ops->clear_set_irqs)
 			cq_host->ops->clear_set_irqs(mmc, true);
-		/* clear the halt flag before we enable cmdq */
-		mmc_host_clr_halt(mmc);
 		cmdq_writel(cq_host, cmdq_readl(cq_host, CQCTL) & ~HALT,
 			    CQCTL);
-		local_irq_restore(flags);
 	}
 
 	return 0;
